@@ -5,43 +5,104 @@ using System.Threading.Tasks;
 using DesafioConcrete.Repository;
 using DesafioConcrete.Model;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace DesafioConcrete.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    public class AuthController : ControllerBase
+    public class authController : ControllerBase
     {
-        private readonly AutenticationRespository _repo;
-        public AuthController()
+        private AutenticationRespository _repo;
+        public authController()
         {
             AutenticationRespository Data_Autentication = new AutenticationRespository();
             _repo = Data_Autentication;
         }
-        // GET Auth/
-        [HttpGet]
-        public CreateLogin GetAll()
+        [HttpPost("singup")]
+        public ActionResult SingUp()
         {
-            return _repo.GetAll();
+            //Setando Valores para Criar em Banco
+            CreateLogin LoginUser = new CreateLogin()
+            {
+                nome = "Wilson",
+                email = "Wilson.falcao1@hotmail.com",
+                senha = "123456",
+                contato = new Telefone() { ddd=81,numero="99987-9940"},
+                data_criacao = DateTime.Now.Date,
+                data_atualizacao= DateTime.Now.Date,
+                ultimo_login = DateTime.Now.Date
+            };
+            //Verificando se há e-mails iguais
+            if (_repo.Get_Find_Email(LoginUser.email)!=true)
+            {
+                //Gerando Token
+                LoginUser.Token = new CreateToken().GetToken;
+                //Gravando conta em banco
+                if(_repo.Post_Create_Login(LoginUser))
+                { 
+                //LoginUser.Token = new StringToHash().GetHash(LoginUser.Token);
+
+                //
+                return SucessCreateLogin(LoginUser);
+                }
+                else
+                {
+                    return HttpStatusCodeResult(404, "Erro no banco de dados");
+                }
+            }
+            else
+            {
+                //Retorno Not Found
+                return HttpStatusCodeResult(404,"E-mail já existe no banco");
+            }
+        }
+        private ActionResult SucessCreateLogin(CreateLogin LoginUser)
+        {
+            //Gerando Json de Registro do Dado
+            var JsonData = new
+            {
+                id = LoginUser.id,
+                data_criacao = LoginUser.data_criacao,
+                ultimo_login = LoginUser.ultimo_login,
+                token = LoginUser.Token
+            };
+
+            //Retornando Dados para Wep API
+            return new JsonResult(JsonData);
         }
 
-        // GET api/values/5
-        [HttpGet("{id}")]
-        public ActionResult<string> Get(int id)
+        [HttpPost("login")]
+        //Necessita colocar Hash no parametro senha
+        public ActionResult Login(string email, string senha)
         {
-            return "value";
+            CreateLogin Body_Login = new CreateLogin();
+            Body_Login = _repo.Get_Find_Login(email, senha);
+            if (Body_Login != null)
+            {
+                return SucessCreateLogin(Body_Login);
+            }
+            else
+            {
+                return HttpStatusCodeResult(401, "Usuário e/ou senha não batem");
+            }
         }
 
-        // POST api/values
-        [HttpPost]
-        public void Post([FromBody] string value)
+        [HttpGet("profile")]
+        public CreateLogin Profile(long id)
         {
+            return _repo.Get_Profile(id, "");
         }
-
-        // PUT api/values/5
-        [HttpPut("{id}")]
-        public void Put(int id, [FromBody] string value)
+        private ActionResult HttpStatusCodeResult(int Erro, string Mensagem)
         {
+            return new JsonResult(new {
+                statuscode = 0+", "+Erro,
+                mesagem = Mensagem
+            });
+        }
+        private void Ultimo_Login(long Id)
+        {
+            _repo.Put_UltimoLogin(0);
         }
     }
 }
