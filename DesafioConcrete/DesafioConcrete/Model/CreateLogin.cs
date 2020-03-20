@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace DesafioConcrete.Model
 {
@@ -28,5 +25,11 @@ namespace DesafioConcrete.Model
         public int id { get; set; }
         public string numero { get; set; }
         public byte ddd { get; set; }
+    }
+
+    public class DataLogin
+    {
+        public string email { get; set; }
+        public string senha { get; set; }
     }
 }

@@ -20,31 +20,21 @@ namespace DesafioConcrete.Controllers
             _repo = Data_Autentication;
         }
         [HttpPost("singup")]
-        public ActionResult SingUp()
+        public ActionResult SingUp([FromBody] CreateLogin CadastroUser)
         {
-            //Setando Valores para Criar em Banco
-            CreateLogin LoginUser = new CreateLogin()
-            {
-                nome = "Wilson",
-                email = "Wilson.falcao1@hotmail.com",
-                senha = "123456",
-                contato = new Telefone() { ddd=81,numero="99987-9940"},
-                data_criacao = DateTime.Now.Date,
-                data_atualizacao= DateTime.Now.Date,
-                ultimo_login = DateTime.Now.Date
-            };
-            //Verificando se há e-mails iguais
-            if (_repo.Get_Find_Email(LoginUser.email)!=true)
+            CadastroUser.data_criacao = DateTime.Now;
+            CadastroUser.ultimo_login = DateTime.Now;
+            if (_repo.Get_Find_Email(CadastroUser.email) != true)
             {
                 //Gerando Token
-                LoginUser.Token = new CreateToken().GetToken;
+                CadastroUser.Token = new CreateToken().GetToken;
                 //Gravando conta em banco
-                if(_repo.Post_Create_Login(LoginUser))
-                { 
-                //LoginUser.Token = new StringToHash().GetHash(LoginUser.Token);
+                if (_repo.Post_Create_Login(CadastroUser))
+                {
+                    //LoginUser.Token = new StringToHash().GetHash(LoginUser.Token);
 
-                //
-                return SucessCreateLogin(LoginUser);
+                    //
+                    return SucessCreateLogin(CadastroUser);
                 }
                 else
                 {
@@ -54,15 +44,16 @@ namespace DesafioConcrete.Controllers
             else
             {
                 //Retorno Not Found
-                return HttpStatusCodeResult(404,"E-mail já existe no banco");
+                return HttpStatusCodeResult(404, "E-mail já existe no banco");
             }
+
         }
         private ActionResult SucessCreateLogin(CreateLogin LoginUser)
         {
             //Gerando Json de Registro do Dado
             var JsonData = new
             {
-                id = LoginUser.id,
+                id = _repo.Get_Find_Token(LoginUser.Token),
                 data_criacao = LoginUser.data_criacao,
                 ultimo_login = LoginUser.ultimo_login,
                 token = LoginUser.Token
@@ -73,13 +64,13 @@ namespace DesafioConcrete.Controllers
         }
 
         [HttpPost("login")]
-        //Necessita colocar Hash no parametro senha
-        public ActionResult Login(string email, string senha)
+        public ActionResult Login([FromBody] DataLogin LoginAuthen)
         {
             CreateLogin Body_Login = new CreateLogin();
-            Body_Login = _repo.Get_Find_Login(email, senha);
+            Body_Login = _repo.Get_Find_Login(LoginAuthen.email, LoginAuthen.senha);
             if (Body_Login != null)
             {
+                Ultimo_Login(Body_Login.id);
                 return SucessCreateLogin(Body_Login);
             }
             else
@@ -89,9 +80,32 @@ namespace DesafioConcrete.Controllers
         }
 
         [HttpGet("profile")]
-        public CreateLogin Profile(long id)
+        [Authorize]
+        public ActionResult Profile()
         {
-            return _repo.Get_Profile(id, "");
+            long IdUser = _repo.Get_Find_Token(Request.Headers["Token"].ToString());
+            if (IdUser != 0)
+            return SucessProfile(_repo.Get_Profile(IdUser,Request.Headers["Token"].ToString()));
+
+            return HttpStatusCodeResult(401, "Não Autorizado");
+        }
+        private ActionResult SucessProfile(CreateLogin LoginUser)
+        {
+            //Gerando Json de Registro do Dado
+            var JsonData = new
+            {
+                id = LoginUser.id,
+                nome = LoginUser.nome,
+                email = LoginUser.email,
+                senha= new StringToHash().GetHash(LoginUser.senha),
+                data_criacao = LoginUser.data_criacao,
+                data_atualizacao = LoginUser.data_atualizacao,
+                ultimo_login = LoginUser.ultimo_login,
+                token = LoginUser.Token
+            };
+
+            //Retornando Dados para Wep API
+            return new JsonResult(JsonData);
         }
         private ActionResult HttpStatusCodeResult(int Erro, string Mensagem)
         {
@@ -102,7 +116,7 @@ namespace DesafioConcrete.Controllers
         }
         private void Ultimo_Login(long Id)
         {
-            _repo.Put_UltimoLogin(0);
+            _repo.Put_UltimoLogin(Id);
         }
     }
 }

@@ -16,5 +16,6 @@ namespace DesafioConcrete.Model
                                         "Persist Security Info=False;User ID=wilsonfalcao;Password=Gpoz33@@;"+
                                         "MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;");
         }
+      
     }
 }

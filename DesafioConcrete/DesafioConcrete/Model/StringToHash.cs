@@ -1,18 +1,28 @@
-﻿using System.Security.Cryptography;
-using System.Text;
-
+﻿using Microsoft.AspNetCore.Cryptography.KeyDerivation;
+using System;
+using System.Security.Cryptography;
 namespace DesafioConcrete.Model
 {
     public class StringToHash
     {
         public string GetHash(string Value)
         {
-            byte[] hash;
-            using (MD5 md5 = MD5.Create())
+         
+            // generate a 128-bit salt using a secure PRNG
+            byte[] salt = new byte[128 / 8];
+            using (var rng = RandomNumberGenerator.Create())
             {
-                hash = md5.ComputeHash(Encoding.UTF8.GetBytes(Value));
+                rng.GetBytes(salt);
             }
-            return hash.ToString();
+            
+            // derive a 256-bit subkey (use HMACSHA1 with 10,000 iterations)
+            string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
+                password: Value,
+                salt: salt,
+                prf: KeyDerivationPrf.HMACSHA1,
+                iterationCount: 10000,
+                numBytesRequested: 256 / 8));
+            return hashed;
         }
     }
 }
